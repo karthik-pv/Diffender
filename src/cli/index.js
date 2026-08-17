@@ -22,6 +22,7 @@ const {
 } = require('../core/vscode');
 
 const { gitintegrate } = require('../core/git-integrate');
+const { getProvider, listProviders, validateProvider } = require('../providers/registry');
 
 const NOT_INITIALIZED_MSG =
   "Diffender is not initialized in this project. Run 'diffender init' first.";
@@ -47,12 +48,46 @@ program
 program
   .command('init')
   .description('Initialize diffender in the current project (creates .diffender/git + config.json).')
-  .action(async () => {
+  .option('--opencode', 'Install the opencode provider plugin.')
+  .allowUnknownOption()
+  .action(async (options) => {
     const projectRoot = process.cwd();
     try {
+      const rawArgs = process.argv.slice(2);
+      const providerFlags = rawArgs
+        .filter((a) => a.startsWith('--') && a !== '--opencode')
+        .map((a) => a.replace(/^--/, ''));
+
+      if (providerFlags.length > 0) {
+        const unknown = providerFlags[0];
+        const available = listProviders().join(', ');
+        console.error(
+          `error: provider '${unknown}' is not yet supported. Available providers: ${available}.`
+        );
+        process.exit(1);
+      }
+
+      let providerName = null;
+      if (options.opencode) {
+        providerName = 'opencode';
+      }
+
+      if (providerName && !validateProvider(providerName)) {
+        const available = listProviders().join(', ');
+        console.error(
+          `error: provider '${providerName}' is not yet supported. Available providers: ${available}.`
+        );
+        process.exit(1);
+      }
+
       const alreadyInitialized = await isShadowRepoInitialized(projectRoot);
       if (alreadyInitialized) {
         await createDefaultConfig(projectRoot);
+        if (providerName) {
+          const provider = getProvider(providerName);
+          await provider.install(projectRoot);
+          console.log(`Provider '${providerName}' installed.`);
+        }
         console.log('Diffender is already initialized. Nothing to do.');
         return;
       }
@@ -61,6 +96,11 @@ program
       console.log('Diffender initialized. Shadow repo created at .diffender/git.');
       const giResult = await gitintegrate(projectRoot);
       console.log(giResult.message);
+      if (providerName) {
+        const provider = getProvider(providerName);
+        await provider.install(projectRoot);
+        console.log(`Provider '${providerName}' installed.`);
+      }
     } catch (err) {
       console.error(`error: ${err.message}`);
       process.exit(1);
@@ -121,7 +161,10 @@ program
         process.exit(1);
       }
       const { diff } = await getCommitDiff(projectRoot, found.hash);
-      console.log(diff);
+      const config = await loadConfig(projectRoot);
+      if (config.print_diff_to_terminal) {
+        console.log(diff);
+      }
       if (options.open) {
         try {
           await openDiffForCommit(projectRoot, found.hash);
@@ -147,8 +190,11 @@ program
     }
     try {
       const { diff, files } = await getWorkingDiff(projectRoot);
+      const config = await loadConfig(projectRoot);
       if (files.length > 0) {
-        console.log(diff);
+        if (config.print_diff_to_terminal) {
+          console.log(diff);
+        }
         if (options.open) {
           try {
             await openDiffForWorkingChanges(projectRoot);
@@ -164,7 +210,9 @@ program
         return;
       }
       const { diff: commitDiff } = await getCommitDiff(projectRoot, history[0].hash);
-      console.log(commitDiff);
+      if (config.print_diff_to_terminal) {
+        console.log(commitDiff);
+      }
       if (options.open) {
         try {
           await openDiffForCommit(projectRoot, history[0].hash);

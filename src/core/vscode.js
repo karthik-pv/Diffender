@@ -3,6 +3,7 @@ const { promisify } = require('node:util');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
+const crypto = require('node:crypto');
 
 const execFileAsync = promisify(execFile);
 
@@ -10,9 +11,12 @@ const {
   getFileContent,
   getCommitFileStatuses,
   getWorkingFileStatuses,
+  getWorkingBinaryFiles,
+  getCommitBinaryFiles,
 } = require('./git-engine');
+const { loadConfig } = require('./config');
 
-const TEMP_DIR = path.join(os.tmpdir(), 'diffender-diff');
+const TEMP_BASE = path.join(os.tmpdir(), 'diffender-diff');
 
 async function isCodeCliAvailable(options = {}) {
   const command = options.command || 'code';
@@ -24,23 +28,24 @@ async function isCodeCliAvailable(options = {}) {
   }
 }
 
-async function cleanTempDir() {
-  await fs.rm(TEMP_DIR, { recursive: true, force: true });
-  await fs.mkdir(TEMP_DIR, { recursive: true });
-}
-
 function sanitizePath(filePath) {
   return filePath.replace(/[/\\]/g, '_');
 }
 
-async function writeTempFile(content, prefix, filePath) {
-  const tempPath = path.join(TEMP_DIR, `${prefix}_${sanitizePath(filePath)}`);
+async function makeTempSessionDir() {
+  const dir = path.join(TEMP_BASE, crypto.randomUUID());
+  await fs.mkdir(dir, { recursive: true });
+  return dir;
+}
+
+async function writeTempFile(sessionDir, content, prefix, filePath) {
+  const tempPath = path.join(sessionDir, `${prefix}_${sanitizePath(filePath)}`);
   await fs.writeFile(tempPath, content ?? '');
   return tempPath;
 }
 
 async function defaultLaunchDiff(beforeFile, afterFile) {
-  spawn('code', ['--diff', beforeFile, afterFile], {
+  spawn('code', ['--diff', `"${beforeFile}"`, `"${afterFile}"`], {
     shell: true,
     detached: true,
     stdio: 'ignore',
@@ -58,11 +63,21 @@ async function openDiffForCommit(projectRoot, hash, options = {}) {
     }
   }
 
-  await cleanTempDir();
+  const sessionDir = await makeTempSessionDir();
 
   const statuses = await getCommitFileStatuses(projectRoot, hash);
+  const binaryFiles = await getCommitBinaryFiles(projectRoot, hash);
+  const config = await loadConfig(projectRoot);
+  const maxDiffWindows = config.max_diff_windows || 10;
+  let opened = 0;
+  let skippedBinary = 0;
 
   for (const { status, path: filePath } of statuses) {
+    if (binaryFiles.has(filePath)) {
+      skippedBinary++;
+      continue;
+    }
+
     let beforeContent = null;
     let afterContent = null;
 
@@ -75,9 +90,17 @@ async function openDiffForCommit(projectRoot, hash, options = {}) {
       afterContent = await getFileContent(projectRoot, hash, filePath);
     }
 
-    const beforeTemp = await writeTempFile(beforeContent, 'before', filePath);
-    const afterTemp = await writeTempFile(afterContent, 'after', filePath);
+    if (opened >= maxDiffWindows) {
+      console.error(
+        `warning: ${statuses.length - opened - skippedBinary} more files changed but only ${maxDiffWindows} diff tabs will be opened. Run 'diffender show <hash>' for specific files.`
+      );
+      break;
+    }
+
+    const beforeTemp = await writeTempFile(sessionDir, beforeContent, 'before', filePath);
+    const afterTemp = await writeTempFile(sessionDir, afterContent, 'after', filePath);
     await launchDiff(beforeTemp, afterTemp);
+    opened++;
   }
 }
 
@@ -92,11 +115,21 @@ async function openDiffForWorkingChanges(projectRoot, options = {}) {
     }
   }
 
-  await cleanTempDir();
+  const sessionDir = await makeTempSessionDir();
 
   const statuses = await getWorkingFileStatuses(projectRoot);
+  const binaryFiles = await getWorkingBinaryFiles(projectRoot);
+  const config = await loadConfig(projectRoot);
+  const maxDiffWindows = config.max_diff_windows || 10;
+  let opened = 0;
+  let skippedBinary = 0;
 
   for (const { status, path: filePath } of statuses) {
+    if (binaryFiles.has(filePath)) {
+      skippedBinary++;
+      continue;
+    }
+
     let beforeContent = null;
     let afterFile;
 
@@ -104,14 +137,22 @@ async function openDiffForWorkingChanges(projectRoot, options = {}) {
       afterFile = path.join(projectRoot, filePath);
     } else if (status === 'D') {
       beforeContent = await getFileContent(projectRoot, 'HEAD', filePath);
-      afterFile = await writeTempFile(null, 'after', filePath);
+      afterFile = await writeTempFile(sessionDir, null, 'after', filePath);
     } else {
       beforeContent = await getFileContent(projectRoot, 'HEAD', filePath);
       afterFile = path.join(projectRoot, filePath);
     }
 
-    const beforeTemp = await writeTempFile(beforeContent, 'before', filePath);
+    if (opened >= maxDiffWindows) {
+      console.error(
+        `warning: ${statuses.length - opened - skippedBinary} more files changed but only ${maxDiffWindows} diff tabs will be opened. Run 'diffender latest' for specific files.`
+      );
+      break;
+    }
+
+    const beforeTemp = await writeTempFile(sessionDir, beforeContent, 'before', filePath);
     await launchDiff(beforeTemp, afterFile);
+    opened++;
   }
 }
 

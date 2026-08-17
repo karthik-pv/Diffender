@@ -89,8 +89,9 @@ async function commitCurrentState(projectRoot, message) {
 }
 
 async function getWorkingDiff(projectRoot) {
-  const diff = await git(projectRoot, ['diff', 'HEAD']);
-  const filesRaw = await git(projectRoot, ['diff', 'HEAD', '--name-only']);
+  await git(projectRoot, ['add', '-A']);
+  const diff = await git(projectRoot, ['diff', '--cached', 'HEAD']);
+  const filesRaw = await git(projectRoot, ['diff', '--cached', 'HEAD', '--name-only']);
   const files = filesRaw.split('\n').filter(Boolean);
   return { diff, files };
 }
@@ -135,8 +136,34 @@ async function getCommitFileStatuses(projectRoot, hash) {
 }
 
 async function getWorkingFileStatuses(projectRoot) {
-  const stdout = await git(projectRoot, ['diff', 'HEAD', '--name-status']);
+  await git(projectRoot, ['add', '-A']);
+  const stdout = await git(projectRoot, ['diff', '--cached', 'HEAD', '--name-status']);
   return parseNameStatus(stdout);
+}
+
+function parseBinaryFilesFromNumstat(stdout) {
+  const binary = new Set();
+  for (const line of stdout.split('\n')) {
+    if (!line.trim()) continue;
+    const parts = line.split('\t');
+    if (parts.length >= 3 && parts[0] === '-' && parts[1] === '-') {
+      binary.add(parts.slice(2).join('\t'));
+    }
+  }
+  return binary;
+}
+
+async function getWorkingBinaryFiles(projectRoot) {
+  await git(projectRoot, ['add', '-A']);
+  const stdout = await git(projectRoot, ['diff', '--cached', '--numstat', 'HEAD']);
+  return parseBinaryFilesFromNumstat(stdout);
+}
+
+async function getCommitBinaryFiles(projectRoot, hash) {
+  const stdout = await git(projectRoot, [
+    'diff-tree', '--numstat', '--no-commit-id', '-r', '--root', hash,
+  ]);
+  return parseBinaryFilesFromNumstat(stdout);
 }
 
 module.exports = {
@@ -150,4 +177,6 @@ module.exports = {
   getFileContent,
   getCommitFileStatuses,
   getWorkingFileStatuses,
+  getWorkingBinaryFiles,
+  getCommitBinaryFiles,
 };

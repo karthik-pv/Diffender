@@ -240,11 +240,10 @@ test('install() writes the plugin file to .opencode/plugins/, not a global direc
 
   const pluginFile = path.join(projectRoot, '.opencode', 'plugins', 'diffender.js');
   const stat = await fs.stat(pluginFile);
-  assert.ok(stat.isFile(), 'plugin stub should exist at .opencode/plugins/diffender.js');
+  assert.ok(stat.isFile(), 'plugin should exist at .opencode/plugins/diffender.js');
 
-  const runtimeFile = path.join(projectRoot, '.diffender', 'opencode-plugin.js');
-  const runtimeStat = await fs.stat(runtimeFile);
-  assert.ok(runtimeStat.isFile(), 'runtime module should exist at .diffender/opencode-plugin.js');
+  const pluginContent = await fs.readFile(pluginFile, 'utf8');
+  assert.ok(pluginContent.includes('export const DiffenderPlugin'), 'plugin should use ESM export');
 
   const libFiles = ['session-handler.js', 'git-engine.js', 'config.js', 'vscode.js'];
   for (const file of libFiles) {

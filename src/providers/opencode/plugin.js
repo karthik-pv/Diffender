@@ -1,22 +1,9 @@
-let sessionHandler, gitEngine, config, vscode;
-try {
-  sessionHandler = require('./lib/session-handler');
-  gitEngine = require('./lib/git-engine');
-  config = require('./lib/config');
-  vscode = require('./lib/vscode');
-} catch {
-  sessionHandler = require('../../core/session-handler');
-  gitEngine = require('../../core/git-engine');
-  config = require('../../core/config');
-  vscode = require('../../core/vscode');
-}
+const { createSessionHandler } = require("../../.diffender/lib/session-handler");
+const { getWorkingDiff, commitCurrentState, resetShadowRepo } = require("../../.diffender/lib/git-engine");
+const { loadConfig } = require("../../.diffender/lib/config");
+const { openDiffForWorkingChanges } = require("../../.diffender/lib/vscode");
 
-const { createSessionHandler } = sessionHandler;
-const { getWorkingDiff, commitCurrentState, resetShadowRepo } = gitEngine;
-const { loadConfig } = config;
-const { openDiffForWorkingChanges } = vscode;
-
-const DiffenderPlugin = async ({ client, directory }) => {
+export const DiffenderPlugin = async ({ client, directory }) => {
   const projectRoot = directory || process.cwd();
 
   const getMessages = client?.session?.messages
@@ -35,18 +22,16 @@ const DiffenderPlugin = async ({ client, directory }) => {
   return {
     event: async ({ event }) => {
       switch (event.type) {
-        case 'message.updated':
+        case "message.updated":
           handler.onMessage(event);
           break;
-        case 'session.idle':
+        case "session.idle":
           await handler.onIdle(event);
           break;
-        case 'session.updated':
+        case "session.updated":
           await handler.onSessionUpdated(event);
           break;
       }
     },
   };
 };
-
-module.exports = { DiffenderPlugin };

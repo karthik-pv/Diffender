@@ -9,7 +9,7 @@ function configPath(projectRoot) {
 }
 
 function defaultConfig() {
-  return { open_diff_auto: true };
+  return { open_diff_auto: true, max_diff_windows: 10, print_diff_to_terminal: true };
 }
 
 async function createDefaultConfig(projectRoot) {
