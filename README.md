@@ -1,17 +1,14 @@
 # Diffender
 
-A local, read-only diff layer that captures the exact file delta produced by each AI coding prompt, using a private shadow git repo (`.diffender/git`), and surfaces it in VS Code's diff viewer — without ever touching the project's real `.git`.
-
-## Status
-
-Early development. See `IMPLEMENTATION_PLAN.md` for the full build plan.
+Captures the exact file delta produced by each AI coding prompt using a private shadow git repo, and surfaces it in VS Code's diff viewer — without touching the project's real `.git`.
 
 ## Requirements
 
 - Node.js >= 18
-- Git installed and on PATH
+- Git on PATH
+- VS Code `code` CLI on PATH (for diff viewing)
 
-## Install (development)
+## Setup
 
 ```bash
 git clone <repo>
@@ -20,14 +17,37 @@ npm install
 npm link
 ```
 
-## Usage
+## Initialize in a project
 
 ```bash
-diffender --help
+cd your-project
+diffender init --opencode
 ```
 
-## Test
+## Commands
 
-```bash
-npm test
+| Command | Description |
+|---------|-------------|
+| `diffender init --opencode` | Initialize shadow repo, config, git isolation, and opencode plugin |
+| `diffender latest` | Show the latest diff and open VS Code diff view |
+| `diffender history` | List all captured prompt diffs |
+| `diffender show <hash>` | Show diff for a specific commit |
+| `diffender snapshot <msg>` | Manually commit current state with a message |
+| `diffender reset` | Wipe history and create a fresh baseline |
+| `diffender gitintegrate` | Add `.diffender/` to real repo's `.git/info/exclude` |
+
+## Config
+
+`.diffender/config.json`:
+
+```json
+{
+  "open_diff_auto": true,
+  "max_diff_windows": 10,
+  "print_diff_to_terminal": true
+}
 ```
+
+## Note
+
+Currently only OpenCode is supported. The provider interface is designed for extension — Claude Code, Cursor, Codex, and others can be added without changing core logic.
