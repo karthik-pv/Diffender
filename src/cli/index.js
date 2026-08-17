@@ -13,13 +13,13 @@ const {
 const {
   createDefaultConfig,
   loadConfig,
-} = require('../config/config');
+} = require('../core/config');
 
 const {
   isCodeCliAvailable,
   openDiffForCommit,
   openDiffForWorkingChanges,
-} = require('../diff-view/vscode-diff');
+} = require('../core/vscode');
 
 const { gitintegrate } = require('../core/git-integrate');
 

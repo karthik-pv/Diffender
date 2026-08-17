@@ -8,7 +8,7 @@ const {
   createDefaultConfig,
   loadConfig,
   updateConfig,
-} = require('../src/config/config');
+} = require('../src/core/config');
 
 async function makeTempProject(prefix = 'diffender-config-test-') {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));

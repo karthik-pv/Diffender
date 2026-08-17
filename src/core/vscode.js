@@ -10,7 +10,7 @@ const {
   getFileContent,
   getCommitFileStatuses,
   getWorkingFileStatuses,
-} = require('../core/git-engine');
+} = require('./git-engine');
 
 const TEMP_DIR = path.join(os.tmpdir(), 'diffender-diff');
 

@@ -14,7 +14,7 @@ const {
   isCodeCliAvailable,
   openDiffForCommit,
   openDiffForWorkingChanges,
-} = require('../src/diff-view/vscode-diff');
+} = require('../src/core/vscode');
 
 async function makeTempProject(prefix = 'diffender-diff-test-') {
   return fs.mkdtemp(path.join(os.tmpdir(), prefix));
