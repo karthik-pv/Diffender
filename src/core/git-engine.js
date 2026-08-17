@@ -109,6 +109,36 @@ async function resetShadowRepo(projectRoot) {
   await initShadowRepo(projectRoot);
 }
 
+async function getFileContent(projectRoot, ref, filePath) {
+  try {
+    return await git(projectRoot, ['show', `${ref}:${filePath}`]);
+  } catch {
+    return null;
+  }
+}
+
+function parseNameStatus(stdout) {
+  return stdout
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [status, file] = line.split('\t');
+      return { status, path: file };
+    });
+}
+
+async function getCommitFileStatuses(projectRoot, hash) {
+  const stdout = await git(projectRoot, [
+    'diff-tree', '--no-commit-id', '--name-status', '-r', '--root', hash,
+  ]);
+  return parseNameStatus(stdout);
+}
+
+async function getWorkingFileStatuses(projectRoot) {
+  const stdout = await git(projectRoot, ['diff', 'HEAD', '--name-status']);
+  return parseNameStatus(stdout);
+}
+
 module.exports = {
   initShadowRepo,
   isShadowRepoInitialized,
@@ -117,4 +147,7 @@ module.exports = {
   getWorkingDiff,
   getCommitDiff,
   resetShadowRepo,
+  getFileContent,
+  getCommitFileStatuses,
+  getWorkingFileStatuses,
 };
