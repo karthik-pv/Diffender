@@ -43,6 +43,9 @@ function detectProvider(projectRoot) {
 const opencode = require('./opencode');
 register(opencode);
 
+const claudeCode = require('./claude');
+register(claudeCode);
+
 module.exports = {
   register,
   getProvider,

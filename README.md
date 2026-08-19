@@ -19,16 +19,21 @@ npm link
 
 ## Initialize in a project
 
+Choose your AI agent provider:
+
 ```bash
 cd your-project
-diffender init --opencode
+diffender init --opencode    # For OpenCode
+# OR
+diffender init --claude      # For Claude Code
 ```
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `diffender init --opencode` | Initialize shadow repo, config, git isolation, and opencode plugin |
+| `diffender init --opencode` | Initialize shadow repo + config + git isolation + opencode plugin |
+| `diffender init --claude` | Initialize shadow repo + config + git isolation + Claude Code hooks |
 | `diffender latest` | Show the latest diff and open VS Code diff view |
 | `diffender history` | List all captured prompt diffs |
 | `diffender show <hash>` | Show diff for a specific commit |
@@ -48,6 +53,20 @@ diffender init --opencode
 }
 ```
 
-## Note
+## Providers
 
-Currently only OpenCode is supported. The provider interface is designed for extension — Claude Code, Cursor, Codex, and others can be added without changing core logic.
+**Supported:**
+- **OpenCode** (`--opencode`) — Uses OpenCode's plugin system to hook into `session.idle` and `session.updated` events
+- **Claude Code** (`--claude`) — Uses Claude Code's `.claude/settings.json` hooks (`UserPromptSubmit` to capture prompts, `Stop` to snapshot diffs)
+
+**Future:** Cursor, Codex, and others can be added via the provider interface without changing core logic.
+
+### How it works
+
+1. On each prompt completion, the provider's hook captures your input text
+2. The diff is computed (current state vs. the last commit in `.diffender/git`)
+3. If configured, VS Code opens side-by-side diffs per changed file
+4. A commit is made to the shadow repo with your prompt as the message
+5. You can browse history with `diffender history` and review any past diff with `diffender show <hash>`
+
+Undo/revert in your AI agent resets the shadow repo to a clean state (no loss — all diffs are safe under `.diffender/` which is excluded from your real `.git`).

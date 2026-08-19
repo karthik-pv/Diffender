@@ -49,13 +49,14 @@ program
   .command('init')
   .description('Initialize diffender in the current project (creates .diffender/git + config.json).')
   .option('--opencode', 'Install the opencode provider plugin.')
+  .option('--claude', 'Install the Claude Code provider plugin.')
   .allowUnknownOption()
   .action(async (options) => {
     const projectRoot = process.cwd();
     try {
       const rawArgs = process.argv.slice(2);
       const providerFlags = rawArgs
-        .filter((a) => a.startsWith('--') && a !== '--opencode')
+        .filter((a) => a.startsWith('--') && a !== '--opencode' && a !== '--claude')
         .map((a) => a.replace(/^--/, ''));
 
       if (providerFlags.length > 0) {
@@ -70,6 +71,8 @@ program
       let providerName = null;
       if (options.opencode) {
         providerName = 'opencode';
+      } else if (options.claude) {
+        providerName = 'claude-code';
       }
 
       if (providerName && !validateProvider(providerName)) {

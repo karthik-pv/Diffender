@@ -6,7 +6,7 @@ const path = require('node:path');
 const execFileAsync = promisify(execFile);
 
 const SHADOW_GIT_DIR = path.join('.diffender', 'git');
-const DEFAULT_EXCLUDES = ['.diffender/', '.opencode/', '.swarm/', 'node_modules/', '.git/'];
+const DEFAULT_EXCLUDES = ['.diffender/', '.opencode/', '.claude/', '.swarm/', 'node_modules/', '.git/'];
 const BASELINE_MESSAGE = 'diffender: baseline';
 
 function gitDirPath(projectRoot) {

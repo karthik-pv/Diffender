@@ -53,3 +53,35 @@ test('validateProvider returns true for a valid provider', () => {
 test('validateProvider returns false for an unknown provider', () => {
   assert.strictEqual(validateProvider('cursor'), false);
 });
+
+test('registry resolves --claude flag to the claude-code provider module', () => {
+  const provider = getProvider('claude-code');
+  assert.ok(provider, 'should return a provider module');
+  assert.strictEqual(provider.name, 'claude-code');
+});
+
+test('contract test: claude-code provider implements all 4 required functions', () => {
+  const provider = getProvider('claude-code');
+  const required = ['name', 'detect', 'install', 'uninstall'];
+
+  for (const member of required) {
+    assert.ok(
+      provider[member] !== undefined && provider[member] !== null,
+      `provider should implement '${member}'`
+    );
+  }
+
+  assert.strictEqual(typeof provider.name, 'string');
+  assert.strictEqual(typeof provider.detect, 'function');
+  assert.strictEqual(typeof provider.install, 'function');
+  assert.strictEqual(typeof provider.uninstall, 'function');
+});
+
+test('listProviders includes claude-code', () => {
+  const names = listProviders();
+  assert.ok(names.includes('claude-code'));
+});
+
+test('validateProvider returns true for claude-code', () => {
+  assert.strictEqual(validateProvider('claude-code'), true);
+});
